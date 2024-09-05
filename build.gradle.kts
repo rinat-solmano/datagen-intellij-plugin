@@ -1,5 +1,6 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -131,6 +132,7 @@ tasks {
     }
 
     publishPlugin {
+        channels.set(listOf("default", "alpha"))
         dependsOn(patchChangelog)
     }
 }
@@ -154,4 +156,9 @@ intellijPlatformTesting {
             }
         }
     }
+}
+
+val runIntellijIdeaUltimate by intellijPlatformTesting.runIde.registering {
+    type = IntelliJPlatformType.IntellijIdeaUltimate
+    version = "2024.2"
 }
