@@ -132,7 +132,7 @@ tasks {
     }
 
     publishPlugin {
-        channels.set(listOf("default", "alpha"))
+        channels.set(listOf("alpha"))
         dependsOn(patchChangelog)
     }
 }
