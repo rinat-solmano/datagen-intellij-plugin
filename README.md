@@ -10,7 +10,7 @@ The lightweight plugin for generating data for testing, samples, demos, etc.
 
 ## Features
 #### UUID generation
-![UUID Generation](https://s7.ezgif.com/tmp/ezgif-7-0ea6dc6733.gif)
+![UUID Generation](https://s1.gifyu.com/images/S1QnR.gif)
 
 
 
