@@ -12,10 +12,10 @@ jobs:
       pull-requests: write
     steps:
 
-#      - name: Maximize Build Space
-#        uses: jlumbroso/free-disk-space@main
-#        with:
-#          tool-cache: false
+      - name: Maximize Build Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
 
       - name: Fetch Sources
         uses: actions/checkout@v4
@@ -51,22 +51,27 @@ jobs:
 
           echo "new_version=${NEW_VERSION}"
           echo "new_version=${NEW_VERSION}" >> $GITHUB_ENV
-          
 
-#      # Set up Java environment for the next steps
-#      - name: Setup Java
-#        uses: actions/setup-java@v4
-#        with:
-#          distribution: zulu
-#          java-version: 17
-#
-#      # Setup Gradle
-#      - name: Setup Gradle
-#        uses: gradle/actions/setup-gradle@v3
-#        with:
-#          gradle-home-cache-cleanup: true
-#
-#      # Set environment variables
+      - name: Update version in gradle.properties
+        run: |
+          NEW_VERSION=${{ env.new_version }}
+          sed -i "s/^pluginVersion=.*/pluginVersion=${NEW_VERSION}/" gradle.properties
+          cat gradle.properties          
+
+      # Set up Java environment for the next steps
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+
+      # Setup Gradle
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-home-cache-cleanup: true
+
+      # Set environment variables
 #      - name: Export Properties
 #        id: properties
 #        shell: bash
@@ -79,31 +84,31 @@ jobs:
 #          echo "changelog<<EOF" >> $GITHUB_OUTPUT
 #          echo "$CHANGELOG" >> $GITHUB_OUTPUT
 #          echo "EOF" >> $GITHUB_OUTPUT
-#
-#      # Update the Unreleased section with the current release note
+
+#       Update the Unreleased section with the current release note
 #      - name: Patch Changelog
 #        if: ${{ steps.properties.outputs.changelog != '' }}
 #        env:
 #          CHANGELOG: ${{ steps.properties.outputs.changelog }}
 #        run: |
 #          ./gradlew patchChangelog --release-note="$CHANGELOG"
-#
-#      # Publish the plugin to JetBrains Marketplace
-#      - name: Publish Plugin
-#        env:
-#          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-#          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
-#          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-#          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
-#        run: ./gradlew publishPlugin
-#
-#      # Upload artifact as a release asset
+
+      # Publish the plugin to JetBrains Marketplace
+      - name: Publish Plugin
+        env:
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+        run: ./gradlew publishPlugin -Dorg.gradle.project.intellijPlatform.publishing.channels=nightly
+
+      # Upload artifact as a release asset
 #      - name: Upload Release Asset
 #        env:
 #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 #        run: gh release upload ${{ github.event.release.tag_name }} ./build/distributions/*
-#
-#      # Create a pull request
+
+      # Create a pull request
 #      - name: Create Pull Request
 #        if: ${{ steps.properties.outputs.changelog != '' }}
 #        env:
