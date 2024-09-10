@@ -138,7 +138,7 @@ jobs:
           gh release create ${{ env.new_version }} \
             --title ${{ env.new_version }} \
             --notes-start-tag ${{ steps.previoustag.outputs.tag }} \
-            --prerelease
+            --prerelease \
             --verify-tag
 
 #       Upload artifact as a release asset
