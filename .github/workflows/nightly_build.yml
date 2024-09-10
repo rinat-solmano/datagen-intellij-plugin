@@ -12,10 +12,10 @@ jobs:
       pull-requests: write
     steps:
 
-      - name: Maximize Build Space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
+#      - name: Maximize Build Space
+#        uses: jlumbroso/free-disk-space@main
+#        with:
+#          tool-cache: false
 
       - name: Fetch Sources
         uses: actions/checkout@v4
@@ -100,7 +100,8 @@ jobs:
           CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
-        run: ./gradlew publishPlugin -Dorg.gradle.project.intellijPlatform.publishing.channels=nightly
+          RELEASE_CHANNELS: nightly
+        run: ./gradlew publishPlugin
 
       # Upload artifact as a release asset
 #      - name: Upload Release Asset
