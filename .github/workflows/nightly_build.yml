@@ -137,7 +137,7 @@ jobs:
         run: |
           gh release create ${{ env.new_version }} \
             --title ${{ env.new_version }} \
-            --notes-start-tag ${{ steps.previoustag.outputs.tag }}" \
+            --notes-start-tag ${{ steps.previoustag.outputs.tag }} \
             --prerelease
             --verify-tag
 
