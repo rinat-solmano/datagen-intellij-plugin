@@ -142,10 +142,10 @@ jobs:
             --verify-tag
 
 #       Upload artifact as a release asset
-#      - name: Upload Release Asset
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        run: gh release upload ${{ env.new_version }} ./build/distributions/*
+      - name: Upload Release Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ env.new_version }} ./build/distributions/*
 
       # Create a pull request
 #      - name: Create Pull Request
