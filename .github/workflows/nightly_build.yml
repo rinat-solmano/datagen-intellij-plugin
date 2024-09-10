@@ -52,11 +52,11 @@ jobs:
           echo "new_version=${NEW_VERSION}"
           echo "new_version=${NEW_VERSION}" >> $GITHUB_ENV
 
-      - name: Update version in gradle.properties
-        run: |
-          NEW_VERSION=${{ env.new_version }}
-          sed -i "s/^pluginVersion=.*/pluginVersion=${NEW_VERSION}/" gradle.properties
-          cat gradle.properties          
+#      - name: Update version in gradle.properties
+#        run: |
+#          NEW_VERSION=${{ env.new_version }}
+#          sed -i "s/^pluginVersion=.*/pluginVersion=${NEW_VERSION}/" gradle.properties
+#          cat gradle.properties
 
       # Set up Java environment for the next steps
       - name: Setup Java
@@ -103,12 +103,19 @@ jobs:
           RELEASE_CHANNELS: nightly
         run: ./gradlew publishPlugin
 
+
       # Upload artifact as a release asset
 #      - name: Upload Release Asset
 #        env:
 #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 #        run: gh release upload ${{ github.event.release.tag_name }} ./build/distributions/*
 
+      - name: Commit and Tag New Version
+        run: |
+               git config user.name "github-actions[bot]"
+               git config user.email "github-actions[bot]@users.noreply.github.com"
+               git tag ${{ env.new_version }}
+               git push origin --tags
       # Create a pull request
 #      - name: Create Pull Request
 #        if: ${{ steps.properties.outputs.changelog != '' }}
