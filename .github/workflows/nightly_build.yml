@@ -109,12 +109,12 @@ jobs:
                git tag ${{ env.new_version }}
                git push origin --tags
 
-      - name: Collect release notes
-        run: |
-          PREVIOUS_TAG="${{ steps.previoustag.outputs.tag }}"
-          COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"%s")
-          echo "commits=${COMMITS}"
-          echo "commits=${COMMITS}" >> $GITHUB_ENV
+#      - name: Collect release notes
+#        run: |
+#          PREVIOUS_TAG="${{ steps.previoustag.outputs.tag }}"
+#          COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"%s")
+#          echo "commits=${COMMITS}"
+#          echo "commits=${COMMITS}" >> $GITHUB_ENV
           
 
 #      # Create a new release draft which is not publicly visible and requires manual acceptance
@@ -133,12 +133,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          PREVIOUS_TAG="${{ steps.previoustag.outputs.tag }}"
+          COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"%s")
+          echo "commits:"
+          echo ${COMMITS}
+          
           gh release create ${{ env.new_version }} \
             --title ${{ env.new_version }} \
             --prerelease \
             --verify-tag \
             --notes "$(cat << 'EOM'
-          ${{ env.commits }}
+          ${COMMITS}
           EOM
           )"
 
