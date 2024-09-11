@@ -57,18 +57,18 @@ jobs:
           sed -i "s/^pluginVersion=.*/pluginVersion=${NEW_VERSION}/" gradle.properties
           cat gradle.properties
 
-      # Set up Java environment for the next steps
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: zulu
-          java-version: 17
-
-      # Setup Gradle
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-home-cache-cleanup: true
+#      # Set up Java environment for the next steps
+#      - name: Setup Java
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: zulu
+#          java-version: 17
+#
+#      # Setup Gradle
+#      - name: Setup Gradle
+#        uses: gradle/actions/setup-gradle@v3
+#        with:
+#          gradle-home-cache-cleanup: true
 
       # Set environment variables
 #      - name: Export Properties
@@ -93,14 +93,14 @@ jobs:
 #          ./gradlew patchChangelog --release-note="$CHANGELOG"
 
       # Publish the plugin to JetBrains Marketplace
-      - name: Publish Plugin
-        env:
-          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
-          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
-          RELEASE_CHANNELS: nightly
-        run: ./gradlew publishPlugin
+#      - name: Publish Plugin
+#        env:
+#          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+#          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+#          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+#          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+#          RELEASE_CHANNELS: nightly
+#        run: ./gradlew publishPlugin
 
       - name: Commit and Tag New Version
         run: |
@@ -109,15 +109,13 @@ jobs:
                git tag ${{ env.new_version }}
                git push origin --tags
 
-#      - name: Collect release notes
-#        run: |
-#          PREVIOUS_TAG="${{ steps.previoustag.outputs.tag }}"
-#          COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"%s")
-#          echo "commits=${COMMITS}"
-#          echo "commits=${COMMITS}" >> $GITHUB_ENV
+      - name: Collect release notes
+        run: |
+          PREVIOUS_TAG="${{ steps.previoustag.outputs.tag }}"
+          COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"%s")
+          echo "commits=${COMMITS}"
+          echo "commits=${COMMITS}" >> $GITHUB_ENV
           
-          
-
 
 #      # Create a new release draft which is not publicly visible and requires manual acceptance
 #      - name: Create Release Draft
@@ -130,16 +128,19 @@ jobs:
 #          ${{ env.commits }}
 #          EOM
 #          )"
-#
+
       - name: Create Github Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create ${{ env.new_version }} \
             --title ${{ env.new_version }} \
-            --notes-start-tag ${{ steps.previoustag.outputs.tag }} \
             --prerelease \
-            --verify-tag
+            --verify-tag \
+            --notes "$(cat << 'EOM'
+          ${{ env.commits }}
+          EOM
+          )"
 
 #       Upload artifact as a release asset
       - name: Upload Release Asset
