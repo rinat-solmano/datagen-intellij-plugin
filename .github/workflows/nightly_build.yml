@@ -134,18 +134,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PREVIOUS_TAG="${{ steps.previoustag.outputs.tag }}"
-          COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"%s")
-          echo "commits:"
-          echo ${COMMITS}
+          git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s" > git.log
+          cat git.log
           
           gh release create ${{ env.new_version }} \
             --title ${{ env.new_version }} \
             --prerelease \
             --verify-tag \
-            --notes "$(cat << 'EOM'
-          ${COMMITS}
-          EOM
-          )"
+            --notes-file git.log
 
 #       Upload artifact as a release asset
       - name: Upload Release Asset
