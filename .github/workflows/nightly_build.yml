@@ -25,13 +25,16 @@ jobs:
       - name: Get Previous tag
         id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@v1"
-        with:
-          fallback: 0.1.0
 
       - name: Get git log from last tag
         id: gitlog
         run: |
-          git log ${{ steps.previoustag.outputs.tag }}..HEAD --pretty=format:"- %s" > git.log
+          if [ ${{ steps.previoustag.outputs.tag }} == "" ]; then
+            echo "No previous tag found. Collecting all commits."
+            git log --pretty=format:"- %s" > git.log
+          else
+            git log ${{ steps.previoustag.outputs.tag }}..HEAD --pretty=format:"- %s" > git.log
+          fi
           cat git.log
           
           if [ ! -s git.log ]; then
