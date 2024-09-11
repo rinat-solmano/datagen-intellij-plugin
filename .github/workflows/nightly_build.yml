@@ -28,8 +28,23 @@ jobs:
         with:
           fallback: 0.1.0
 
+      - name: Get git log from last tag
+        id: gitlog
+        run: |
+          git log ${{ steps.previoustag.outputs.tag }}..HEAD --pretty=format:"- %s" > git.log
+          cat git.log
+          
+          if [ ! -s git.log ]; then
+            echo "Git log is empty. Skipping remaining steps."
+            echo "changes_detected=false" >> $GITHUB_ENV
+          else
+            echo "changes_detected=true" >> $GITHUB_ENV
+          fi
+      
+
       - name: Calculate nightly build version
         id: nightly_version
+        if: env.changes_detected
         run: |
           # Extract the version from gradle.properties
           GRADLE_VERSION=$(grep '^pluginVersion=' gradle.properties | cut -d'=' -f2)
@@ -52,127 +67,56 @@ jobs:
           echo "new_version=${NEW_VERSION}" >> $GITHUB_ENV
 
       - name: Update version in gradle.properties
+        if: env.changes_detected
         run: |
           NEW_VERSION=${{ env.new_version }}
           sed -i "s/^pluginVersion=.*/pluginVersion=${NEW_VERSION}/" gradle.properties
           cat gradle.properties
 
-#      # Set up Java environment for the next steps
-#      - name: Setup Java
-#        uses: actions/setup-java@v4
-#        with:
-#          distribution: zulu
-#          java-version: 17
-#
-#      # Setup Gradle
-#      - name: Setup Gradle
-#        uses: gradle/actions/setup-gradle@v3
-#        with:
-#          gradle-home-cache-cleanup: true
+      - name: Setup Java
+        if: env.changes_detected
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
 
-      # Set environment variables
-#      - name: Export Properties
-#        id: properties
-#        shell: bash
-#        run: |
-#          CHANGELOG="$(cat << 'EOM' | sed -e 's/^[[:space:]]*$//g' -e '/./,$!d'
-#          ${{ github.event.release.body }}
-#          EOM
-#          )"
-#
-#          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-#          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-#          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Setup Gradle
+        if: env.changes_detected
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-home-cache-cleanup: true
 
-#       Update the Unreleased section with the current release note
-#      - name: Patch Changelog
-#        if: ${{ steps.properties.outputs.changelog != '' }}
-#        env:
-#          CHANGELOG: ${{ steps.properties.outputs.changelog }}
-#        run: |
-#          ./gradlew patchChangelog --release-note="$CHANGELOG"
-
-      # Publish the plugin to JetBrains Marketplace
-#      - name: Publish Plugin
-#        env:
-#          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-#          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
-#          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-#          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
-#          RELEASE_CHANNELS: nightly
-#        run: ./gradlew publishPlugin
+      - name: Publish Plugin
+        if: env.changes_detected
+        env:
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+          RELEASE_CHANNELS: nightly
+        run: ./gradlew publishPlugin
 
       - name: Commit and Tag New Version
+        if: env.changes_detected
         run: |
                git config user.name "github-actions[bot]"
                git config user.email "github-actions[bot]@users.noreply.github.com"
                git tag ${{ env.new_version }}
                git push origin --tags
 
-#      - name: Collect release notes
-#        run: |
-#          PREVIOUS_TAG="${{ steps.previoustag.outputs.tag }}"
-#          COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"%s")
-#          echo "commits=${COMMITS}"
-#          echo "commits=${COMMITS}" >> $GITHUB_ENV
-          
-
-#      # Create a new release draft which is not publicly visible and requires manual acceptance
-#      - name: Create Release Draft
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        run: |
-#          gh release create ${{ env.new_version }} \
-#            --title ${{ env.new_version }} \
-#            --notes "$(cat << 'EOM'
-#          ${{ env.commits }}
-#          EOM
-#          )"
-
       - name: Create Github Release
+        if: env.changes_detected
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PREVIOUS_TAG="${{ steps.previoustag.outputs.tag }}"
-          git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s" > git.log
-          cat git.log
-          
           gh release create ${{ env.new_version }} \
             --title ${{ env.new_version }} \
             --prerelease \
             --verify-tag \
             --notes-file git.log
 
-#       Upload artifact as a release asset
       - name: Upload Release Asset
+        if: env.changes_detected
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload ${{ env.new_version }} ./build/distributions/*
-
-      # Create a pull request
-#      - name: Create Pull Request
-#        if: ${{ steps.properties.outputs.changelog != '' }}
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        run: |
-#          VERSION="${{ github.event.release.tag_name }}"
-#          BRANCH="changelog-update-$VERSION"
-#          LABEL="release changelog"
-#
-#          git config user.email "action@github.com"
-#          git config user.name "GitHub Action"
-#
-#          git checkout -b $BRANCH
-#          git commit -am "Changelog update - $VERSION"
-#          git push --set-upstream origin $BRANCH
-#
-#          gh label create "$LABEL" \
-#            --description "Pull requests with release changelog update" \
-#            --force \
-#            || true
-#
-#          gh pr create \
-#            --title "Changelog update - \`$VERSION\`" \
-#            --body "Current pull request contains patched \`CHANGELOG.md\` file for the \`$VERSION\` version." \
-#            --label "$LABEL" \
-#            --head $BRANCH
