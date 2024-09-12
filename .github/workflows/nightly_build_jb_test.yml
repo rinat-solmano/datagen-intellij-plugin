@@ -1,6 +1,9 @@
 name: Nightly build jb test
+#on:
+#  workflow_dispatch
 on:
-  workflow_dispatch
+  push:
+    branches: [ main ]
 
 jobs:
 
@@ -44,7 +47,7 @@ jobs:
 
   release:
     needs: check_diff
-    if: env.changes_detected == 'true'
+    if: ${{ env.changes_detected == 'true'}}
     name: Publish Nightly Build
     runs-on: ubuntu-latest
     permissions:
