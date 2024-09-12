@@ -137,7 +137,7 @@ jobs:
             --title jb-${{ env.new_version }} \
             --prerelease \
             --verify-tag \
-            --notes ${{ needs.check_diff.outputs.commits }}
+            --notes "${{ needs.check_diff.outputs.commits }}"
 
       - name: Upload Release Asset
         env:
