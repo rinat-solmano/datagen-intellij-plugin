@@ -11,6 +11,7 @@ jobs:
     name: Check for Changes
     runs-on: ubuntu-latest
     outputs:
+      latest_tag: ${{ steps.get_jb_tags.outputs.latest_tag }}
       changes_detected: ${{ steps.gitlog.outputs.changes_detected }}
       commits: ${{ steps.gitlog.outputs.commits }}
     steps:
@@ -26,8 +27,10 @@ jobs:
           if [ -z "$TAG" ]; then
             echo "No jb-* tags found. Setting to -1."
             echo "latest_tag=-1" >> $GITHUB_ENV
+            echo "latest_tag=-1" >> $GITHUB_OUTPUT
           else
             echo "latest_tag=$TAG" >> $GITHUB_ENV
+            echo "latest_tag=$TAG" >> $GITHUB_OUTPUT
           fi
 
       - name: Get git log from last tag
@@ -76,7 +79,7 @@ jobs:
           GRADLE_VERSION=$(grep '^pluginVersion=' gradle.properties | cut -d'=' -f2)
 
           # Get the previous tag
-          PREVIOUS_TAG="${{ env.latest_tag }}"
+          PREVIOUS_TAG="${{ needs.check_diff.outputs.latest_tag }}"
           PREVIOUS_VERSION=${PREVIOUS_TAG#jb-}
 
           # Determine the new version
@@ -99,25 +102,25 @@ jobs:
           sed -i "s/^pluginVersion=.*/pluginVersion=${NEW_VERSION}/" gradle.properties
           cat gradle.properties
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: zulu
-          java-version: 17
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-home-cache-cleanup: true
-
-      - name: Publish Plugin
-        env:
-          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
-          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
-          RELEASE_CHANNELS: nightly
-        run: ./gradlew publishPlugin
+#      - name: Setup Java
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: zulu
+#          java-version: 17
+#
+#      - name: Setup Gradle
+#        uses: gradle/actions/setup-gradle@v3
+#        with:
+#          gradle-home-cache-cleanup: true
+#
+#      - name: Publish Plugin
+#        env:
+#          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+#          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+#          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+#          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+#          RELEASE_CHANNELS: nightly
+#        run: ./gradlew publishPlugin
 
       - name: Commit and Tag New Version
         run: |
