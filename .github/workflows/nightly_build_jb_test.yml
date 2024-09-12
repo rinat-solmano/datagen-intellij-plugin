@@ -10,6 +10,8 @@ jobs:
   check_diff:
     name: Check for Changes
     runs-on: ubuntu-latest
+    outputs:
+      changes_detected: ${{ steps.check.outputs.changes_detected }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,7 +49,7 @@ jobs:
 
   release:
     needs: check_diff
-    if: ${{ env.changes_detected == 'true'}}
+    if: ${{ needs.check_diff.outputs.changes_detected == 'true' }}
     name: Publish Nightly Build
     runs-on: ubuntu-latest
     permissions:
