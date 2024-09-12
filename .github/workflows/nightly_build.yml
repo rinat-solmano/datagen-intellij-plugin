@@ -1,64 +1,92 @@
 name: Nightly build
+
 on:
-  workflow_dispatch
+  schedule:
+    - cron: '0 0 * * *'
+
+  workflow_dispatch:
 
 jobs:
 
+  check_diff:
+    name: Check for Changes
+    runs-on: ubuntu-latest
+    outputs:
+      latest_tag: ${{ steps.get_jb_tags.outputs.latest_tag }}
+      changes_detected: ${{ steps.gitlog.outputs.changes_detected }}
+      commits: ${{ steps.gitlog.outputs.commits }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get jb-* tags
+        id: get_jb_tags
+        run: |
+          TAG=$(git tag --list "jb-*" | sort -V | tail -n 1)
+          if [ -z "$TAG" ]; then
+            echo "No jb-* tags found. Setting to -1."
+            echo "latest_tag=-1" >> $GITHUB_ENV
+            echo "latest_tag=-1" >> $GITHUB_OUTPUT
+          else
+            echo "latest_tag=$TAG" >> $GITHUB_ENV
+            echo "latest_tag=$TAG" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get git log from last tag
+        id: gitlog
+        run: |
+          if [ ${{ env.latest_tag }} == "-1" ]; then
+            echo "No previous tag found. Collecting all commits."
+            git log --pretty=format:"- %s" > git.log
+          else
+            git log ${{ env.latest_tag }}..HEAD --pretty=format:"- %s" > git.log
+          fi
+
+          if [ ! -s git.log ]; then
+            echo "Git log is empty. Skipping remaining steps."
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          else
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+            
+            echo "commits<<EOF" >> $GITHUB_OUTPUT
+            echo "$(cat git.log)" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
   release:
-    name: Publish Plugin
+    needs: check_diff
+    if: ${{ needs.check_diff.outputs.changes_detected == 'true' }}
+    name: Publish Nightly Build
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
 
-#      - name: Maximize Build Space
-#        uses: jlumbroso/free-disk-space@main
-#        with:
-#          tool-cache: false
+      #      - name: Maximize Build Space
+      #        uses: jlumbroso/free-disk-space@main
+      #        with:
+      #          tool-cache: false
 
       - name: Fetch Sources
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get Previous tag
-        id: previoustag
-        uses: "WyriHaximus/github-action-get-previous-tag@v1"
-
-      - name: Get git log from last tag
-        id: gitlog
-        run: |
-          if [ ${{ steps.previoustag.outputs.tag }} == "" ]; then
-            echo "No previous tag found. Collecting all commits."
-            git log --pretty=format:"- %s" > git.log
-          else
-            git log ${{ steps.previoustag.outputs.tag }}..HEAD --pretty=format:"- %s" > git.log
-          fi
-          cat git.log
-          
-          if [ ! -s git.log ]; then
-            echo "Git log is empty. Skipping remaining steps."
-            echo "changes_detected=false" >> $GITHUB_ENV
-          else
-            echo "changes_detected=true" >> $GITHUB_ENV
-          fi
-      
 
       - name: Calculate nightly build version
         id: nightly_version
-        if: env.changes_detected == 'true'
         run: |
           # Extract the version from gradle.properties
           GRADLE_VERSION=$(grep '^pluginVersion=' gradle.properties | cut -d'=' -f2)
-          
+
           # Get the previous tag
-          PREVIOUS_TAG="${{ steps.previoustag.outputs.tag }}"
+          PREVIOUS_TAG="${{ needs.check_diff.outputs.latest_tag }}"
+          PREVIOUS_VERSION=${PREVIOUS_TAG#jb-}
 
           # Determine the new version
-          if [[ "$PREVIOUS_TAG" == *-nightly.* ]]; then
-            prefix="${PREVIOUS_TAG%.*}"
-            number="${PREVIOUS_TAG##*.}"
+          if [[ "$PREVIOUS_VERSION" == *-nightly.* ]]; then
+            prefix="${PREVIOUS_VERSION%.*}"
+            number="${PREVIOUS_VERSION##*.}"
             incremented_number=$((number + 1))
             NEW_VERSION="${prefix}.${incremented_number}"
           else
@@ -70,27 +98,23 @@ jobs:
           echo "new_version=${NEW_VERSION}" >> $GITHUB_ENV
 
       - name: Update version in gradle.properties
-        if: env.changes_detected == 'true'
         run: |
           NEW_VERSION=${{ env.new_version }}
           sed -i "s/^pluginVersion=.*/pluginVersion=${NEW_VERSION}/" gradle.properties
           cat gradle.properties
 
       - name: Setup Java
-        if: env.changes_detected == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: 17
 
       - name: Setup Gradle
-        if: env.changes_detected == 'true'
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-home-cache-cleanup: true
 
       - name: Publish Plugin
-        if: env.changes_detected == 'true'
         env:
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
           CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
@@ -100,26 +124,23 @@ jobs:
         run: ./gradlew publishPlugin
 
       - name: Commit and Tag New Version
-        if: env.changes_detected == 'true'
         run: |
-               git config user.name "github-actions[bot]"
-               git config user.email "github-actions[bot]@users.noreply.github.com"
-               git tag ${{ env.new_version }}
-               git push origin --tags
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag jb-${{ env.new_version }}
+          git push origin --tags
 
       - name: Create Github Release
-        if: env.changes_detected == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ env.new_version }} \
-            --title ${{ env.new_version }} \
+          gh release create jb-${{ env.new_version }} \
+            --title jb-${{ env.new_version }} \
             --prerelease \
             --verify-tag \
-            --notes-file git.log
+            --notes "${{ needs.check_diff.outputs.commits }}"
 
       - name: Upload Release Asset
-        if: env.changes_detected == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ env.new_version }} ./build/distributions/*
+        run: gh release upload jb-${{ env.new_version }} ./build/distributions/*
