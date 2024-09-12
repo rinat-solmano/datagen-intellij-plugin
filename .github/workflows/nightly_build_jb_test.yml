@@ -11,7 +11,7 @@ jobs:
     name: Check for Changes
     runs-on: ubuntu-latest
     outputs:
-      changes_detected: ${{ steps.check.outputs.changes_detected }}
+      changes_detected: ${{ steps.gitlog.outputs.changes_detected }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,9 +42,9 @@ jobs:
 
           if [ ! -s git.log ]; then
             echo "Git log is empty. Skipping remaining steps."
-            echo "changes_detected=false" >> $GITHUB_ENV
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
           else
-            echo "changes_detected=true" >> $GITHUB_ENV
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
           fi
 
   release:
