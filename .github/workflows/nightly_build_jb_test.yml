@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       changes_detected: ${{ steps.gitlog.outputs.changes_detected }}
+      commits: ${{ steps.gitlog.outputs.commits }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,13 +39,16 @@ jobs:
           else
             git log ${{ env.latest_tag }}..HEAD --pretty=format:"- %s" > git.log
           fi
-          cat git.log
 
           if [ ! -s git.log ]; then
             echo "Git log is empty. Skipping remaining steps."
             echo "changes_detected=false" >> $GITHUB_OUTPUT
           else
             echo "changes_detected=true" >> $GITHUB_OUTPUT
+            
+            echo "commits<<EOF" >> $GITHUB_OUTPUT
+            echo "$(cat git.log)" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
           fi
 
   release:
@@ -126,6 +130,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo ${{ needs.check_diff.outputs.commits }} > git.log
+          
           gh release create jb-${{ env.new_version }} \
             --title jb-${{ env.new_version }} \
             --prerelease \
