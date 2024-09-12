@@ -84,16 +84,18 @@ jobs:
           PREVIOUS_VERSION=${PREVIOUS_TAG#jb-}
 
           # Determine the new version
-          if [[ "$PREVIOUS_VERSION" == *-nightly.* ]]; then
+          CURRENT_BASE_VERSION=${GRADLE_VERSION%-SNAPSHOT}
+          PREVIOUS_BASE_VERSION="${PREVIOUS_VERSION%-nightly.*}"
+          
+          if [[ "$PREVIOUS_BASE_VERSION" == "$CURRENT_BASE_VERSION" && "$PREVIOUS_VERSION" == *-nightly.* ]]; then
             prefix="${PREVIOUS_VERSION%.*}"
             number="${PREVIOUS_VERSION##*.}"
             incremented_number=$((number + 1))
             NEW_VERSION="${prefix}.${incremented_number}"
           else
-            BASE_VERSION=${GRADLE_VERSION%-SNAPSHOT}
-            NEW_VERSION="${BASE_VERSION}-nightly.1"
+            NEW_VERSION="${CURRENT_BASE_VERSION}-nightly.1"
           fi
-
+          
           echo "new_version=${NEW_VERSION}"
           echo "new_version=${NEW_VERSION}" >> $GITHUB_ENV
 
