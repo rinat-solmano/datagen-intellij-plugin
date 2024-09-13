@@ -1,0 +1,126 @@
+name: Public release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Specify the type of release'
+        required: true
+        type: choice
+        default: 'minor'
+        options:
+          - 'minor'
+          - 'major'
+
+jobs:
+
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    outputs:
+      latest_tag: ${{ steps.get_jb_tags.outputs.latest_tag }}
+      changes_detected: ${{ steps.gitlog.outputs.changes_detected }}
+      commits: ${{ steps.gitlog.outputs.commits }}
+    steps:
+      - name: Check if triggered from proper tag
+        run: |
+          if [[ ${{ github.ref }} != "refs/tags/jb-*" ]]; then
+            echo "This action is only triggered on tags starting with 'jb-'"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Echo
+        run: |
+          echo "Workflow input: ${{ github.event.inputs.desired_version }}"
+          echo "Source of workflow_dispatch: ${{ github.event.workflow_dispatch }}"
+
+      - name: Get last release tag
+        id: get_release_tags
+        run: |
+          RELEASE_TAG=$(git tag --list "jb-*" | grep -v "nightly" | sort -V | tail -n 1)
+          echo "last_release_tag=${RELEASE_TAG:--1}" >> $GITHUB_ENV
+          echo "last_release_tag=${RELEASE_TAG:--1}" >> $GITHUB_OUTPUT
+          
+          echo "last_release_tag=${RELEASE_TAG:--1}"
+          
+
+#      - name: Calculate nightly build version
+#        id: nightly_version
+#        run: |
+#          # Extract the version from gradle.properties
+#          GRADLE_VERSION=$(grep '^pluginVersion=' gradle.properties | cut -d'=' -f2)
+#
+#          # Get the previous tag
+#          PREVIOUS_TAG="${{ needs.check_diff.outputs.latest_tag }}"
+#          PREVIOUS_VERSION=${PREVIOUS_TAG#jb-}
+#
+#          # Determine the new version
+#          CURRENT_BASE_VERSION=${GRADLE_VERSION%-SNAPSHOT}
+#          PREVIOUS_BASE_VERSION="${PREVIOUS_VERSION%-nightly.*}"
+#
+#          if [[ "$PREVIOUS_BASE_VERSION" == "$CURRENT_BASE_VERSION" && "$PREVIOUS_VERSION" == *-nightly.* ]]; then
+#            prefix="${PREVIOUS_VERSION%.*}"
+#            number="${PREVIOUS_VERSION##*.}"
+#            incremented_number=$((number + 1))
+#            NEW_VERSION="${prefix}.${incremented_number}"
+#          else
+#            NEW_VERSION="${CURRENT_BASE_VERSION}-nightly.1"
+#          fi
+#
+#          echo "new_version=${NEW_VERSION}"
+#          echo "new_version=${NEW_VERSION}" >> $GITHUB_ENV
+#
+#      - name: Update version in gradle.properties
+#        run: |
+#          NEW_VERSION=${{ env.new_version }}
+#          sed -i "s/^pluginVersion=.*/pluginVersion=${NEW_VERSION}/" gradle.properties
+#          cat gradle.properties
+#
+#      - name: Setup Java
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: zulu
+#          java-version: 17
+#
+#      - name: Setup Gradle
+#        uses: gradle/actions/setup-gradle@v3
+#        with:
+#          gradle-home-cache-cleanup: true
+#
+#      - name: Publish Plugin
+#        env:
+#          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+#          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+#          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+#          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+#          RELEASE_CHANNELS: nightly
+#        run: ./gradlew publishPlugin
+#
+#      - name: Commit and Tag New Version
+#        run: |
+#          git config user.name "github-actions[bot]"
+#          git config user.email "github-actions[bot]@users.noreply.github.com"
+#          git tag jb-${{ env.new_version }}
+#          git push origin --tags
+#
+#      - name: Create Github Release
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: |
+#          echo "${{ needs.check_diff.outputs.commits }}" > git.log
+#
+#          gh release create jb-${{ env.new_version }} \
+#            --title jb-${{ env.new_version }} \
+#            --prerelease \
+#            --verify-tag \
+#            --notes-file git.log
+#
+#      - name: Upload Release Asset
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: gh release upload jb-${{ env.new_version }} ./build/distributions/*
