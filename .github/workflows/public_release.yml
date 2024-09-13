@@ -24,7 +24,7 @@ jobs:
     steps:
       - name: Check if triggered from proper tag
         run: |
-          if [[ ${{ github.ref }} != "refs/tags/jb-*" ]]; then
+          if [[ !startsWith(github.ref, 'refs/tags/jb-') ]]; then
             echo "This action is only triggered on tags starting with 'jb-'"
             exit 1
           fi
