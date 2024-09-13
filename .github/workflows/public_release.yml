@@ -22,12 +22,12 @@ jobs:
       changes_detected: ${{ steps.gitlog.outputs.changes_detected }}
       commits: ${{ steps.gitlog.outputs.commits }}
     steps:
-      - name: Check if triggered from proper tag
-        run: |
-          if ${{ !startsWith(github.ref, 'refs/tags/jb-')}}; then
-            echo "This action is only triggered on tags starting with 'jb-'"
-            exit 1
-          fi
+#      - name: Check if triggered from proper tag
+#        run: |
+#          if ${{ !startsWith(github.ref, 'refs/tags/jb-')}}; then
+#            echo "This action is only triggered on tags starting with 'jb-'"
+#            exit 1
+#          fi
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,8 +36,11 @@ jobs:
 
       - name: Echo
         run: |
-          echo "Workflow input: ${{ github.event.inputs.desired_version }}"
+          echo "Workflow input: ${{ github.event.inputs.release_type }}"
           echo "Source of workflow_dispatch: ${{ github.event.workflow_dispatch }}"
+          echo "Workflow triggered by: ${{ github.event_name }}"
+          echo "Workflow event path: ${{ github.event_path }}"
+          echo "Git ref: ${{ github.ref }}"
 
       - name: Get last release tag
         id: get_release_tags

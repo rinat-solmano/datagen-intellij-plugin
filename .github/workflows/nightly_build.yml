@@ -16,6 +16,13 @@ jobs:
       changes_detected: ${{ steps.gitlog.outputs.changes_detected }}
       commits: ${{ steps.gitlog.outputs.commits }}
     steps:
+      - name: Check if triggered from main branch
+        run: |
+          if [ "${{ github.ref }}" != 'refs/heads/main' ]; then
+            echo "This workflow is allowed to run from the main branch."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
