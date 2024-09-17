@@ -47,25 +47,32 @@ jobs:
           git push origin --tags
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: test-${{ github.run_number }}
-          release_name: Release ${{ github.run_number }}
-          body: ${{ steps.gitlog.outputs.commits }}
-          draft: false
-          prerelease: true
+        run: |
+          gh release create test-${{ github.run_number }} \
+            --title test-${{ github.run_number }} \
+            --prerelease \
+            --verify-tag \
+            --notes-start-tag ${{ env.latest_tag }}
+#      - name: Create Release
+#        id: create_release
+#        uses: actions/create-release@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          tag_name: test-${{ github.run_number }}
+#          release_name: Release ${{ github.run_number }}
+#          body: ${{ steps.gitlog.outputs.commits }}
+#          draft: false
+#          prerelease: true
 
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release-${{ github.run_number }}.txt
-          asset_name: release-${{ github.run_number }}.txt
-          asset_content_type: text/plain
-#          asset_content_type: application/zip
+#      - name: Upload Release Asset
+#        id: upload-release-asset
+#        uses: actions/upload-release-asset@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          upload_url: ${{ steps.create_release.outputs.upload_url }}
+#          asset_path: ./release-${{ github.run_number }}.txt
+#          asset_name: release-${{ github.run_number }}.txt
+#          asset_content_type: text/plain
+##          asset_content_type: application/zip
