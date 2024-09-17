@@ -28,7 +28,7 @@ jobs:
       - name: Get git log from last tag
         id: gitlog
         run: |
-          git log ${{ env.latest_tag }}..HEAD --pretty=format:"- %s" > git.log
+          git log --pretty=format:"- %s" > git.log
 
           echo "commits<<EOF" >> $GITHUB_OUTPUT
           echo "$(cat git.log)" >> $GITHUB_OUTPUT
