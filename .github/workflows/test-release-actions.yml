@@ -54,7 +54,7 @@ jobs:
         with:
           tag_name: test-${{ github.run_number }}
           release_name: Release ${{ github.run_number }}
-          body: ${{ steps.gitlog.outputs.commits }}
+#          body: ${{ steps.gitlog.outputs.commits }}
           draft: false
           prerelease: true
 
