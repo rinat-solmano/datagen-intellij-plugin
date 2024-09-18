@@ -47,6 +47,8 @@ jobs:
           git push origin --tags
 
       - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create test-${{ github.run_number }} \
             --title test-${{ github.run_number }} \
