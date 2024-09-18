@@ -19,7 +19,7 @@ jobs:
       - name: Check if triggered from main branch
         run: |
           if [ "${{ github.ref }}" != 'refs/heads/main' ]; then
-            echo "This workflow is allowed to run from the main branch."
+            echo "This workflow is allowed to run only from main branch."
             exit 1
           fi
 
@@ -32,14 +32,10 @@ jobs:
         id: get_jb_tags
         run: |
           TAG=$(git tag --list "jb-*" | sort -V | tail -n 1)
-          if [ -z "$TAG" ]; then
-            echo "No jb-* tags found. Setting to -1."
-            echo "latest_tag=-1" >> $GITHUB_ENV
-            echo "latest_tag=-1" >> $GITHUB_OUTPUT
-          else
-            echo "latest_tag=$TAG" >> $GITHUB_ENV
-            echo "latest_tag=$TAG" >> $GITHUB_OUTPUT
-          fi
+          
+          echo "latest_tag=${TAG:--1}"
+          echo "latest_tag=${TAG:--1}" >> $GITHUB_ENV
+          echo "latest_tag=${TAG:--1}" >> $GITHUB_OUTPUT
 
       - name: Get git log from last tag
         id: gitlog

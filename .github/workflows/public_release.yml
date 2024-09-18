@@ -36,22 +36,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Calculate release version
-        run: |
-          NIGHTLY_BUILD_VERSION="${${{ github.event.inputs.tag }}#jb-}"
-          NIGHTLY_BUILD_BASE_VERSION="${NIGHTLY_BUILD_VERSION%-nightly.*}"
-          
-          LAST_RELEASE_TAG=$(git tag --list "jb-*" | grep -v "nightly" | sort -V | tail -n 1)
-          echo "last_release_tag=${LAST_RELEASE_TAG:--1}" >> $GITHUB_ENV
-          echo "last_release_tag=${LAST_RELEASE_TAG:--1}" >> $GITHUB_OUTPUT
-          
-          echo "last_release_tag=${LAST_RELEASE_TAG:--1}"
-          echo "Nightly build base: ${NIGHTLY_BUILD_BASE_VERSION}"
-          
-          
-          if [[ $LAST_RELEASE_TAG == "-1" ]]; then
-            echo "No previous release found, setting version to ${NIGHTLY_BUILD_BASE_VERSION}"
-            NEW_RELEASE_VERSION=NIGHTLY_BUILD_BASE_VERSION
+#      - name: Calculate release version
+#        run: |
+#          NIGHTLY_BUILD_VERSION="${${{ github.event.inputs.tag }}#jb-}"
+#          NIGHTLY_BUILD_BASE_VERSION="${NIGHTLY_BUILD_VERSION%-nightly.*}"
+#
+#          LAST_RELEASE_TAG=$(git tag --list "jb-*" | grep -v "nightly" | sort -V | tail -n 1)
+#          echo "last_release_tag=${LAST_RELEASE_TAG:--1}" >> $GITHUB_ENV
+#          echo "last_release_tag=${LAST_RELEASE_TAG:--1}" >> $GITHUB_OUTPUT
+#
+#          echo "last_release_tag=${LAST_RELEASE_TAG:--1}"
+#          echo "Nightly build base: ${NIGHTLY_BUILD_BASE_VERSION}"
+#
+#
+#          if [[ $LAST_RELEASE_TAG == "-1" ]]; then
+#            echo "No previous release found, setting version to ${NIGHTLY_BUILD_BASE_VERSION}"
+#            NEW_RELEASE_VERSION=NIGHTLY_BUILD_BASE_VERSION
 
 #          elseif [[ $LAST_RELEASE_TAG == *-nightly.* ]]; then
 #            echo "Last release was a nightly build, setting version to ${NIGHTLY_BUILD_BASE_VERSION}"
@@ -63,8 +63,8 @@ jobs:
 #
 #          fi
           
-          echo "new_version=${NEW_RELEASE_VERSION}" >> $GITHUB_ENV
-          echo "new_version=${NEW_RELEASE_VERSION}" >> $GITHUB_OUTPUT
+#          echo "new_version=${NEW_RELEASE_VERSION}" >> $GITHUB_ENV
+#          echo "new_version=${NEW_RELEASE_VERSION}" >> $GITHUB_OUTPUT
       
 
 #      - name: Calculate nightly build version
