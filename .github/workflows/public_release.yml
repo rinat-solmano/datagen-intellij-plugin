@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Specify the tag to release (usually one of the nightly build tag after previous release)'
+        description: 'Specify the PROPERLY TESTED nightly build version for public release'
         required: true
         type: string
       release_type:
@@ -26,10 +26,17 @@ jobs:
       changes_detected: ${{ steps.gitlog.outputs.changes_detected }}
       commits: ${{ steps.gitlog.outputs.commits }}
     steps:
-      - name: Validate inputs
+      - name: Check if triggered from main branch
         run: |
-          [[ "${{ github.event.inputs.tag }}" =~ ^jb-.*.*.*-nightly.*$ ]] || echo "The input tag is not valid nightly build tag for jetbrains plugin" && exit 1
-          [[ $(git tag | grep "${{ github.event.inputs.tag }}") ]] || echo "The input tag does not exists" && exit 1
+          if [ "${{ github.ref }}" != 'refs/heads/main' ]; then
+            echo "This workflow is allowed to run only from main branch."
+            exit 1
+          fi
+
+      - name: Validate input nightly build version
+        run: |
+          [[ "${{ github.event.inputs.tag }}" =~ ^*.*.*-nightly.*$ ]] || echo "The input version is not valid nightly build version for jetbrains plugin" && exit 1
+          [[ $(git tag | grep jb-"${{ github.event.inputs.tag }}") ]] || echo "The input version does not exist" && exit 1
 
       - name: Checkout
         uses: actions/checkout@v4
