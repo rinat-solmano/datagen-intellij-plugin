@@ -95,6 +95,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-home-cache-cleanup: true
+
       - name: Create release branch
         run: |
           git config user.name "github-actions[bot]"
@@ -120,17 +131,6 @@ jobs:
           git push --set-upstream origin jb-release-${{ needs.prepare.outputs.release_version }}
           git tag jb-${{ needs.prepare.outputs.release_version }}
           git push origin --tags
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: zulu
-          java-version: 17
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-home-cache-cleanup: true
 
       - name: Publish Plugin
         env:
