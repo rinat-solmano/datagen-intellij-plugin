@@ -3,8 +3,8 @@ name: Public release
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Specify the PROPERLY TESTED nightly build version for public release'
+      version:
+        description: 'Specify the PROPERLY TESTED nightly build version to make a public release from'
         required: true
         type: string
       release_type:
@@ -40,11 +40,10 @@ jobs:
 
       - name: Validate input nightly build version
         run: |
-          [[ ! "${{ github.event.inputs.tag }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-nightly.*$ ]] && { echo "Error: The input version is not valid nightly build version for jetbrains plugin (x.y.z-nightly.i)"; exit 1; }
-          [[ $(git tag | grep jb-"${{ github.event.inputs.tag }}") ]] || { echo "The input version does not exist"; exit 1; }
+          [[ ! "${{ github.event.inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-nightly.*$ ]] && { echo "Error: The input version is not valid nightly build version for jetbrains plugin (x.y.z-nightly.i)"; exit 1; }
+          [[ $(git tag | grep jb-"${{ github.event.inputs.version }}") ]] || { echo "The input version does not exist"; exit 1; }
           
-          NIGHTLY_BUILD_VERSION="${${{ github.event.inputs.tag }}#jb-}"
-          NIGHTLY_BUILD_BASE_VERSION="${NIGHTLY_BUILD_VERSION%-nightly.*}"
+          NIGHTLY_BUILD_BASE_VERSION="${${{ github.event.inputs.version }}%-nightly.*}"
           echo "Nightly build base: ${NIGHTLY_BUILD_BASE_VERSION}"
           
           LAST_RELEASE_TAG=$(git tag --list "jb-*" | grep -v "nightly" | sort -V | tail -n 1 || echo "jb-0.0.0")
