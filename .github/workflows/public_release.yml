@@ -17,14 +17,12 @@ on:
           - 'major'
 
 jobs:
-
-  release:
-    name: Publish release
+  prepare:
+    name: Prepare release
     runs-on: ubuntu-latest
     outputs:
-      latest_tag: ${{ steps.get_jb_tags.outputs.latest_tag }}
-      changes_detected: ${{ steps.gitlog.outputs.changes_detected }}
-      commits: ${{ steps.gitlog.outputs.commits }}
+      release_version: ${{ steps.calculate_versions.outputs.release_version }}
+      new_unreleased_version: ${{ steps.calculate_versions.outputs.new_unreleased_version }}
     steps:
       - name: Check if triggered from main branch
         run: |
@@ -57,106 +55,124 @@ jobs:
           fi
 
       - name: Calculate release version
+        id: calculate_versions
         run: |
           GRADLE_VERSION=$(grep '^pluginVersion=' gradle.properties | cut -d'=' -f2)
-          CURRENT_BASE_VERSION=${GRADLE_VERSION%-SNAPSHOT}
-          echo "Gradle base version: ${CURRENT_BASE_VERSION}"
+          CURRENT_UNRELEASED_VERSION=${GRADLE_VERSION%-SNAPSHOT}
+          echo "Gradle base version: ${CURRENT_UNRELEASED_VERSION}"
 
           # Determine the new release version based on the release type
           if [ "${{ github.event.inputs.release_type }}" == "major" ]; then
-            IFS='.' read -r -a version_parts <<< "$CURRENT_BASE_VERSION"
+            IFS='.' read -r -a version_parts <<< "$CURRENT_UNRELEASED_VERSION"
             major=${version_parts[0]}
             NEW_MAJOR_VERSION=$((major + 1)).0.0
             NEW_RELEASE_VERSION="${NEW_MAJOR_VERSION}"
           else
-            NEW_RELEASE_VERSION="${CURRENT_BASE_VERSION}"
+            NEW_RELEASE_VERSION="${CURRENT_UNRELEASED_VERSION}"
           fi
           
-          # Calculate the new current version which should be NEW_RELEASE_VERSION + minor increment + -SNAPSHOT
+          # Calculate new unreleased version (release version + minor increment)
           IFS='.' read -r -a version_parts <<< "$NEW_RELEASE_VERSION"
           minor=${version_parts[1]}
           NEW_UNRELEASED_VERSION="${version_parts[0]}.$((minor + 1)).0"
 
-          echo "new_version=${NEW_RELEASE_VERSION}"
-          echo "new_version=${NEW_RELEASE_VERSION}" >> $GITHUB_ENV
-          echo "new_version=${NEW_RELEASE_VERSION}" >> $GITHUB_OUTPUT
+          echo "release_version=${NEW_RELEASE_VERSION}"
+          echo "release_version=${NEW_RELEASE_VERSION}" >> $GITHUB_ENV
+          echo "release_version=${NEW_RELEASE_VERSION}" >> $GITHUB_OUTPUT
           
           echo "new_unreleased_version=${NEW_UNRELEASED_VERSION}"
           echo "new_unreleased_version=${NEW_UNRELEASED_VERSION}" >> $GITHUB_ENV
           echo "new_unreleased_version=${NEW_UNRELEASED_VERSION}" >> $GITHUB_OUTPUT
 
-#      - name: Calculate nightly build version
-#        id: nightly_version
-#        run: |
-#          # Extract the version from gradle.properties
-#          GRADLE_VERSION=$(grep '^pluginVersion=' gradle.properties | cut -d'=' -f2)
-#
-#          # Get the previous tag
-#          PREVIOUS_TAG="${{ needs.check_diff.outputs.latest_tag }}"
-#          PREVIOUS_VERSION=${PREVIOUS_TAG#jb-}
-#
-#          # Determine the new version
-#          CURRENT_BASE_VERSION=${GRADLE_VERSION%-SNAPSHOT}
-#          PREVIOUS_BASE_VERSION="${PREVIOUS_VERSION%-nightly.*}"
-#
-#          if [[ "$PREVIOUS_BASE_VERSION" == "$CURRENT_BASE_VERSION" && "$PREVIOUS_VERSION" == *-nightly.* ]]; then
-#            prefix="${PREVIOUS_VERSION%.*}"
-#            number="${PREVIOUS_VERSION##*.}"
-#            incremented_number=$((number + 1))
-#            NEW_VERSION="${prefix}.${incremented_number}"
-#          else
-#            NEW_VERSION="${CURRENT_BASE_VERSION}-nightly.1"
-#          fi
-#
-#          echo "new_version=${NEW_VERSION}"
-#          echo "new_version=${NEW_VERSION}" >> $GITHUB_ENV
-#
-#      - name: Update version in gradle.properties
-#        run: |
-#          NEW_VERSION=${{ env.new_version }}
-#          sed -i "s/^pluginVersion=.*/pluginVersion=${NEW_VERSION}/" gradle.properties
-#          cat gradle.properties
-#
-#      - name: Setup Java
-#        uses: actions/setup-java@v4
-#        with:
-#          distribution: zulu
-#          java-version: 17
-#
-#      - name: Setup Gradle
-#        uses: gradle/actions/setup-gradle@v3
-#        with:
-#          gradle-home-cache-cleanup: true
-#
-#      - name: Publish Plugin
-#        env:
-#          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-#          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
-#          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-#          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
-#          RELEASE_CHANNELS: nightly
-#        run: ./gradlew publishPlugin
-#
-#      - name: Commit and Tag New Version
-#        run: |
-#          git config user.name "github-actions[bot]"
-#          git config user.email "github-actions[bot]@users.noreply.github.com"
-#          git tag jb-${{ env.new_version }}
-#          git push origin --tags
-#
-#      - name: Create Github Release
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        run: |
-#          echo "${{ needs.check_diff.outputs.commits }}" > git.log
-#
-#          gh release create jb-${{ env.new_version }} \
-#            --title jb-${{ env.new_version }} \
-#            --prerelease \
-#            --verify-tag \
-#            --notes-file git.log
-#
-#      - name: Upload Release Asset
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        run: gh release upload jb-${{ env.new_version }} ./build/distributions/*
+  release:
+    name: Release
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create release branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout jb-${{ github.event.inputs.version }}
+          
+          git checkout -b jb-release-${{ needs.prepare.outputs.release_version }}
+
+      - name: Update version and patch changelog
+        run: |
+          sed -i "s/^pluginVersion=.*/pluginVersion=${{ needs.prepare.outputs.release_version }}/" gradle.properties
+          cat gradle.properties
+          ./gradlew patchChangelog
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gradle.properties
+          git add CHANGELOG.md
+          git commit -m "Release jetbrains plugin version ${NEW_RELEASE_VERSION}"
+          git push --set-upstream origin jb-release-${{ needs.prepare.outputs.release_version }}
+          git tag jb-${{ needs.prepare.outputs.release_version }}
+          git push origin --tags
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-home-cache-cleanup: true
+
+      - name: Publish Plugin
+        env:
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+          RELEASE_CHANNELS: nightly,default
+        run: ./gradlew publishPlugin
+
+      - name: Create Github Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./gradlew getChangelog --console=plain -q --no-header --no-summary > release-notes.md
+
+          gh release create jb-${{ needs.prepare.outputs.release_version }} \
+            --title jb-${{ needs.prepare.outputs.release_version }} \
+            --verify-tag \
+            --notes-file release-notes.md
+
+      - name: Upload Release Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload jb-${{ needs.prepare.outputs.release_version }} ./build/distributions/*
+
+
+      - name: Prepare PR to main branch after release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          BRANCH=after-jb-release-${{ needs.prepare.outputs.release_version }}
+          
+          git checkout -b $BRANCH
+          
+          NEW_VERSION=${{ needs.prepare.outputs.new_unreleased_version }}-SNAPSHOT
+          sed -i "s/^pluginVersion=.*/pluginVersion=${NEW_VERSION}/" gradle.properties
+          cat gradle.properties
+          
+          git add gradle.properties
+          git commit -m "Prepare for next development iteration"
+          git push --set-upstream origin $BRANCH
+          
+          gh pr create --title "Release jetbrains plugin version ${NEW_RELEASE_VERSION}"
