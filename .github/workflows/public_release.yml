@@ -38,7 +38,7 @@ jobs:
 
       - name: Validate input nightly build version
         run: |
-          [[ ! "${{ github.event.inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-nightly.*$ ]] && { echo "Error: The input version is not valid nightly build version for jetbrains plugin (x.y.z-nightly.i)"; exit 1; }
+          [[ ! "${{ github.event.inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-nightly.[0-9]+$ ]] && { echo "Error: The input version is not valid nightly build version for jetbrains plugin (x.y.z-nightly.i)"; exit 1; }
           [[ $(git tag | grep jb-"${{ github.event.inputs.version }}") ]] || { echo "The input version does not exist"; exit 1; }
           
           NIGHTLY_VERSION=${{ github.event.inputs.version }}
