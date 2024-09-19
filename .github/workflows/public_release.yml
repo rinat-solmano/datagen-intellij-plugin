@@ -33,31 +33,31 @@ jobs:
             exit 1
           fi
 
-      - name: Validate input nightly build version
-        run: |
-          [[ ! "${{ github.event.inputs.tag }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-nightly.*$ ]] && { echo "Error: The input version is not valid nightly build version for jetbrains plugin (x.y.z-nightly.i)"; exit 1; }
-          [[ $(git tag | grep jb-"${{ github.event.inputs.tag }}") ]] || { echo "The input version does not exist"; exit 1; }
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Calculate release version
+      - name: Validate input nightly build version
         run: |
+          [[ ! "${{ github.event.inputs.tag }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-nightly.*$ ]] && { echo "Error: The input version is not valid nightly build version for jetbrains plugin (x.y.z-nightly.i)"; exit 1; }
+          [[ $(git tag | grep jb-"${{ github.event.inputs.tag }}") ]] || { echo "The input version does not exist"; exit 1; }
+          
           NIGHTLY_BUILD_VERSION="${${{ github.event.inputs.tag }}#jb-}"
           NIGHTLY_BUILD_BASE_VERSION="${NIGHTLY_BUILD_VERSION%-nightly.*}"
           echo "Nightly build base: ${NIGHTLY_BUILD_BASE_VERSION}"
           
           LAST_RELEASE_TAG=$(git tag --list "jb-*" | grep -v "nightly" | sort -V | tail -n 1 || echo "jb-0.0.0")
-          LAST_RELEASE_BASE_VERSION="${LAST_RELEASE_TAG#jb-}"
-          echo "Last release version: ${LAST_RELEASE_BASE_VERSION}"
+          LAST_RELEASE_VERSION="${LAST_RELEASE_TAG#jb-}"
+          echo "Last release version: ${LAST_RELEASE_VERSION}"
 
-          if [[ $(printf "%s\n%s" "$LAST_RELEASE_BASE_VERSION" "$NIGHTLY_BUILD_BASE_VERSION" | sort -V | tail -n 1) == "$LAST_RELEASE_BASE_VERSION" ]]; then
-            echo "Error: Nightly version ${NIGHTLY_BUILD_VERSION} is not higher than last release version ${LAST_RELEASE_BASE_VERSION}."
+          if [[ $(printf "%s\n%s" "$LAST_RELEASE_VERSION" "$NIGHTLY_BUILD_BASE_VERSION" | sort -V | tail -n 1) == "$LAST_RELEASE_VERSION" ]]; then
+            echo "Error: Nightly version ${NIGHTLY_BUILD_VERSION} is not higher than last release version ${LAST_RELEASE_VERSION}."
             exit 1
           fi
-          
+
+      - name: Calculate release version
+        run: |
           GRADLE_VERSION=$(grep '^pluginVersion=' gradle.properties | cut -d'=' -f2)
           CURRENT_BASE_VERSION=${GRADLE_VERSION%-SNAPSHOT}
           echo "Gradle base version: ${CURRENT_BASE_VERSION}"
