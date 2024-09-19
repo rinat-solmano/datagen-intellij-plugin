@@ -181,4 +181,6 @@ jobs:
           git commit -m "Prepare for next development iteration"
           git push --set-upstream origin $BRANCH
           
-          gh pr create --title "Release jetbrains plugin version ${NEW_RELEASE_VERSION}"
+          gh pr create \
+            --title "Release jetbrains plugin version ${NEW_RELEASE_VERSION}" \
+            --body "Release jetbrains plugin version ${NEW_RELEASE_VERSION}" \
