@@ -43,36 +43,47 @@ jobs:
         with:
           fetch-depth: 0
 
-#      - name: Calculate release version
-#        run: |
-#          NIGHTLY_BUILD_VERSION="${${{ github.event.inputs.tag }}#jb-}"
-#          NIGHTLY_BUILD_BASE_VERSION="${NIGHTLY_BUILD_VERSION%-nightly.*}"
-#
-#          LAST_RELEASE_TAG=$(git tag --list "jb-*" | grep -v "nightly" | sort -V | tail -n 1)
-#          echo "last_release_tag=${LAST_RELEASE_TAG:--1}" >> $GITHUB_ENV
-#          echo "last_release_tag=${LAST_RELEASE_TAG:--1}" >> $GITHUB_OUTPUT
-#
-#          echo "last_release_tag=${LAST_RELEASE_TAG:--1}"
-#          echo "Nightly build base: ${NIGHTLY_BUILD_BASE_VERSION}"
-#
-#
-#          if [[ $LAST_RELEASE_TAG == "-1" ]]; then
-#            echo "No previous release found, setting version to ${NIGHTLY_BUILD_BASE_VERSION}"
-#            NEW_RELEASE_VERSION=NIGHTLY_BUILD_BASE_VERSION
-
-#          elseif [[ $LAST_RELEASE_TAG == *-nightly.* ]]; then
-#            echo "Last release was a nightly build, setting version to ${NIGHTLY_BUILD_BASE_VERSION}"
-#            NEW_RELEASE_VERSION=NIGHTLY_BUILD_BASE_VERSION
-#
-#          else
-#            echo "Last release was not a nightly build, setting version to ${NIGHTLY_BUILD_BASE_VERSION}"
-#            NEW_RELEASE_VERSION=NIGHTLY_BUILD_BASE_VERSION
-#
-#          fi
+      - name: Calculate release version
+        run: |
+          NIGHTLY_BUILD_VERSION="${${{ github.event.inputs.tag }}#jb-}"
+          NIGHTLY_BUILD_BASE_VERSION="${NIGHTLY_BUILD_VERSION%-nightly.*}"
+          echo "Nightly build base: ${NIGHTLY_BUILD_BASE_VERSION}"
           
-#          echo "new_version=${NEW_RELEASE_VERSION}" >> $GITHUB_ENV
-#          echo "new_version=${NEW_RELEASE_VERSION}" >> $GITHUB_OUTPUT
-      
+          LAST_RELEASE_TAG=$(git tag --list "jb-*" | grep -v "nightly" | sort -V | tail -n 1 || echo "jb-0.0.0")
+          LAST_RELEASE_BASE_VERSION="${LAST_RELEASE_TAG#jb-}"
+          echo "Last release version: ${LAST_RELEASE_BASE_VERSION}"
+
+          if [[ $(printf "%s\n%s" "$LAST_RELEASE_BASE_VERSION" "$NIGHTLY_BUILD_BASE_VERSION" | sort -V | tail -n 1) == "$LAST_RELEASE_BASE_VERSION" ]]; then
+            echo "Error: Nightly version ${NIGHTLY_BUILD_VERSION} is not higher than last release version ${LAST_RELEASE_BASE_VERSION}."
+            exit 1
+          fi
+          
+          GRADLE_VERSION=$(grep '^pluginVersion=' gradle.properties | cut -d'=' -f2)
+          CURRENT_BASE_VERSION=${GRADLE_VERSION%-SNAPSHOT}
+          echo "Gradle base version: ${CURRENT_BASE_VERSION}"
+
+          # Determine the new release version based on the release type
+          if [ "${{ github.event.inputs.release_type }}" == "major" ]; then
+            IFS='.' read -r -a version_parts <<< "$CURRENT_BASE_VERSION"
+            major=${version_parts[0]}
+            NEW_MAJOR_VERSION=$((major + 1)).0.0
+            NEW_RELEASE_VERSION="${NEW_MAJOR_VERSION}"
+          else
+            NEW_RELEASE_VERSION="${CURRENT_BASE_VERSION}"
+          fi
+          
+          # Calculate the new current version which should be NEW_RELEASE_VERSION + minor increment + -SNAPSHOT
+          IFS='.' read -r -a version_parts <<< "$NEW_RELEASE_VERSION"
+          minor=${version_parts[1]}
+          NEW_UNRELEASED_VERSION="${version_parts[0]}.$((minor + 1)).0"
+
+          echo "new_version=${NEW_RELEASE_VERSION}"
+          echo "new_version=${NEW_RELEASE_VERSION}" >> $GITHUB_ENV
+          echo "new_version=${NEW_RELEASE_VERSION}" >> $GITHUB_OUTPUT
+          
+          echo "new_unreleased_version=${NEW_UNRELEASED_VERSION}"
+          echo "new_unreleased_version=${NEW_UNRELEASED_VERSION}" >> $GITHUB_ENV
+          echo "new_unreleased_version=${NEW_UNRELEASED_VERSION}" >> $GITHUB_OUTPUT
 
 #      - name: Calculate nightly build version
 #        id: nightly_version
