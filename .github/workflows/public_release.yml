@@ -88,6 +88,9 @@ jobs:
     name: Release
     needs: prepare
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
 
       - name: Checkout
